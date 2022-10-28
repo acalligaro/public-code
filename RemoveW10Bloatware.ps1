@@ -1,15 +1,11 @@
-# Remove Microsoft bloatware/crapware
-# Original file https://gist.github.com/mark05e/a79221b4245962a477a49eb281d97388#file-remove-hpbloatware-ps1 
-# and modified by Jeroen Burgerhout (@BurgerhoutJ)
+$path = 'C:\ProgramData\AutoPilotConfig\W10BloatwareCleanup'
+if (!(Test-Path 'C:\ProgramData\AutoPilotConfig')) { New-Item 'C:\ProgramData\AutoPilotConfig' -ItemType Directory }
+if (!(Test-Path $path )) { New-Item $path -ItemType Directory }
 
-# Create a tag file just so Intune knows this was installed
-if (-not (Test-Path "$($env:ProgramData)\Microsoft\RemoveW10Bloatware")) {
-    mkdir "$($env:ProgramData)\Microsoft\RemoveW10Bloatware"
-}
-Set-Content -Path "$($env:ProgramData)\Microsoft\RemoveW10Bloatware\RemoveW10Bloatware.ps1.tag" -Value 'Installed'
+Set-Content -Path "$path\W10BloatwareCleanup.tag" -Value 'Start' -Force
 
 # Start logging
-Start-Transcript "$($env:ProgramData)\Microsoft\RemoveW10Bloatware\RemoveW10Bloatware.log"
+Start-Transcript "$path\W10BloatwareCleanup.log"
 
 #region Appx
 
@@ -74,8 +70,11 @@ ForEach ($AppxPackage in $InstalledPackages) {
     Write-Host -Object "Attempting to remove Appx package: [$($AppxPackage.Name)]..."
 
     Try {
-        $Null = Remove-AppxPackage -Package $AppxPackage.PackageFullName -AllUsers -ErrorAction Stop
-        Write-Host -Object "Successfully removed Appx package: [$($AppxPackage.Name)]"
+        if (Get-AppxPackage $AppxPackage) {
+            Write-Host -Object "-Package [$($AppxPackage.Name)] is installed, removing ..."
+            $Null = Remove-AppxPackage -Package $AppxPackage.PackageFullName -AllUsers -ErrorAction Stop
+            Write-Host -Object "Successfully removed Appx package: [$($AppxPackage.Name)]"
+        }
     }
     Catch { Write-Warning -Message "Failed to remove Appx package: [$($AppxPackage.Name)]" }
 }
@@ -159,6 +158,5 @@ if ($null -ne $task4) {
     Get-ScheduledTask UsbCeip | Disable-ScheduledTask -ErrorAction SilentlyContinue
 }
    
-
-
 Stop-Transcript
+Set-Content -Path "$path\W10BloatwareCleanup.tag" -Value 'Success' -Force
